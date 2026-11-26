@@ -63,7 +63,8 @@ try {
     New-Item -ItemType Directory -Path $package | Out-Null
     Copy-Item -LiteralPath (Join-Path $build 'release/TexasSolverGui.exe') -Destination $package
     $application = Join-Path $package 'TexasSolverGui.exe'
-    Invoke-Checked $windeployqt @('--release', '--no-compiler-runtime', $application)
+    # Qt 5.15.2's explicit release filter rejects the official MinGW platform plugin.
+    Invoke-Checked $windeployqt @('--no-compiler-runtime', $application)
 
     # windeployqt does not discover application-specific OpenMP runtime dependencies.
     foreach ($dll in $runtimeDlls) {

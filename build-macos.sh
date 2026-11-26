@@ -93,7 +93,7 @@ while [[ "$added_library" == 1 ]]; do
                 install_name_tool -change "$dependency" "$bundled_path" "$binary"
             fi
         done <<< "$linked"
-        lipo -verify_arch "$arch" "$binary"
+        lipo "$binary" -verify_arch "$arch"
     done < <(mach_o_files)
 done
 

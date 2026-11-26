@@ -53,7 +53,7 @@ jobs:
           LIBOMP_PREFIX="$(brew --prefix libomp)"
           export LIBOMP_PREFIX
           ./build-macos.sh
-          lipo -verify_arch "$EXPECTED_ARCH" "$BUILD_DIR/TexasSolverGui.app/Contents/MacOS/TexasSolverGui"
+          lipo "$BUILD_DIR/TexasSolverGui.app/Contents/MacOS/TexasSolverGui" -verify_arch "$EXPECTED_ARCH"
           hdiutil verify "$BUILD_DIR/TexasSolverGui.dmg"
           mkdir -p dist
           cp "$BUILD_DIR/TexasSolverGui.dmg" "dist/$PACKAGE"
