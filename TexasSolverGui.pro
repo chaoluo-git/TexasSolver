@@ -27,28 +27,20 @@ TRANSLATIONS =  lang_cn.ts\
 
 
 macx: {
-QMAKE_CXXFLAGS += -Xpreprocessor -fopenmp -lomp -I/usr/local/include
+    LIBOMP_PREFIX = $$(LIBOMP_PREFIX)
+    isEmpty(LIBOMP_PREFIX):exists(/opt/homebrew/opt/libomp/lib/libomp.dylib): LIBOMP_PREFIX = /opt/homebrew/opt/libomp
+    isEmpty(LIBOMP_PREFIX):exists(/usr/local/opt/libomp/lib/libomp.dylib): LIBOMP_PREFIX = /usr/local/opt/libomp
+    isEmpty(LIBOMP_PREFIX): LIBOMP_PREFIX = /usr/local
+    QMAKE_CXXFLAGS += -Xpreprocessor -fopenmp -I$$shell_quote($$LIBOMP_PREFIX/include)
+    LIBS += -L$$shell_quote($$LIBOMP_PREFIX/lib) -lomp
+    ICON = imgs/texassolver_logo.icns
 }
 
-macx: {
-QMAKE_LFLAGS += -lomp
-}
-
-macx: {
-LIBS += -L /usr/local/lib /usr/local/lib/libomp.dylib
-ICON = imgs/texassolver_logo.icns
-}
-
-win32: {
-QMAKE_CXXFLAGS+= -openmp
-QMAKE_LFLAGS +=  -openmp
-RC_ICONS = imgs/texassolver_logo.ico
-}
-
-win64: {
-QMAKE_CXXFLAGS+= -openmp
-QMAKE_LFLAGS +=  -openmp
-RC_ICONS = imgs/texassolver_logo.ico
+win32-g++ {
+    CONFIG += c++17
+    QMAKE_CXXFLAGS += -fopenmp
+    QMAKE_LFLAGS += -fopenmp
+    RC_ICONS = imgs/texassolver_logo.ico
 }
 
 linux: {

@@ -1,0 +1,160 @@
+name: Dev builds and release
+
+on:
+  push:
+    branches: [dev]
+
+permissions:
+  contents: read
+
+jobs:
+  macos:
+    if: github.event.deleted == false
+    name: macOS (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x64
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Qt 5 for Apple Silicon
+        if: matrix.arch == 'arm64'
+        run: brew install qt@5
+
+      - name: Install Qt 5 for Intel
+        if: matrix.arch == 'x64'
+        uses: jurplel/install-qt-action@b344308e4483fc892e0d27b3cd1b173ebdd95f06 # v4.5.0
+        with:
+          version: '5.15.2'
+          host: mac
+          target: desktop
+          arch: clang_64
+
+      - name: Install OpenMP
+        run: brew install libomp
+
+      - name: Build and package
+        shell: bash
+        env:
+          BUILD_DIR: ${{ runner.temp }}/texassolver-mac
+          EXPECTED_ARCH: ${{ matrix.arch == 'x64' && 'x86_64' || 'arm64' }}
+          PACKAGE: TexasSolverGui-macos-${{ matrix.arch }}.dmg
+        run: |
+          LIBOMP_PREFIX="$(brew --prefix libomp)"
+          export LIBOMP_PREFIX
+          ./build-macos.sh
+          lipo -verify_arch "$EXPECTED_ARCH" "$BUILD_DIR/TexasSolverGui.app/Contents/MacOS/TexasSolverGui"
+          hdiutil verify "$BUILD_DIR/TexasSolverGui.dmg"
+          mkdir -p dist
+          cp "$BUILD_DIR/TexasSolverGui.dmg" "dist/$PACKAGE"
+
+      - name: Upload macOS package
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: package-macos-${{ matrix.arch }}
+          path: dist/TexasSolverGui-macos-${{ matrix.arch }}.dmg
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: true
+
+  windows:
+    if: github.event.deleted == false
+    name: Windows (x64)
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Qt 5 and MinGW
+        uses: jurplel/install-qt-action@b344308e4483fc892e0d27b3cd1b173ebdd95f06 # v4.5.0
+        with:
+          version: '5.15.2'
+          host: windows
+          target: desktop
+          arch: win64_mingw81
+          tools: tools_mingw,qt.tools.win64_mingw810
+
+      - name: Build and package
+        shell: pwsh
+        run: ./build-windows.ps1 -QtDirectory $env:QT_ROOT_DIR -MinGWDirectory (Join-Path $env:IQTA_TOOLS 'mingw810_64')
+
+      - name: Upload Windows package
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: package-windows-x64
+          path: dist/TexasSolverGui-windows-x64.zip
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: true
+
+  release:
+    name: Publish dev prerelease
+    needs: [macos, windows]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Download build packages
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          pattern: package-*
+          path: dist
+          merge-multiple: true
+
+      - name: Verify packages and publish
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cd dist
+          packages=(
+            TexasSolverGui-macos-arm64.dmg
+            TexasSolverGui-macos-x64.dmg
+            TexasSolverGui-windows-x64.zip
+          )
+          for package in "${packages[@]}"; do
+            if [[ ! -s "$package" ]]; then
+              echo "::error::Missing or empty package: $package"
+              exit 1
+            fi
+          done
+          sha256sum "${packages[@]}" > SHA256SUMS.txt
+
+          tag="dev-${GITHUB_RUN_NUMBER}-${GITHUB_SHA:0:12}"
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+          # A retry can resume a draft after an interrupted upload.
+          if existing=$(gh release view "$tag" --json isDraft,isPrerelease,targetCommitish \
+              --jq '[.isDraft, .isPrerelease, .targetCommitish] | @tsv'); then
+            IFS=$'\t' read -r is_draft is_prerelease target_commit <<< "$existing"
+            if [[ "$target_commit" != "$GITHUB_SHA" || "$is_prerelease" != true ]]; then
+              echo "::error::Release $tag has an unexpected target or release type."
+              exit 1
+            fi
+            if [[ "$is_draft" == false ]]; then
+              gh release view "$tag" --json url --jq .url
+              exit 0
+            fi
+          else
+            gh release create "$tag" --draft --prerelease --latest=false \
+              --target "$GITHUB_SHA" --title "TexasSolver $tag" \
+              --notes "Development build of $GITHUB_SHA. [Build logs]($run_url)."
+          fi
+
+          gh release upload "$tag" "${packages[@]}" SHA256SUMS.txt --clobber
+          gh release edit "$tag" --draft=false --prerelease --latest=false
+          gh release view "$tag" --json url --jq .url

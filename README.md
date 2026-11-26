@@ -32,6 +32,37 @@ Feel free to mess with a toy solver [in google colab](https://colab.research.goo
 
 Download package according to your OS in [release package](https://github.com/bupticybee/TexasSolver/releases), unzip it, and install is done. It's that simple.
 
+### Development builds
+
+The `dev` branch starts from this fork's default branch, `master`. Each push to `dev` starts the [Dev builds and release workflow](https://github.com/chaoluo-git/TexasSolver/actions/workflows/dev-release.yml). Once all three builds succeed, it publishes a [GitHub prerelease](https://github.com/chaoluo-git/TexasSolver/releases) tagged `dev-<run_number>-<short_sha>`.
+
+| Platform | Download |
+| --- | --- |
+| Mac with Apple Silicon | `TexasSolverGui-macos-arm64.dmg` |
+| Mac with an Intel processor | `TexasSolverGui-macos-x64.dmg` |
+| Windows x64 | `TexasSolverGui-windows-x64.zip` |
+
+Compare the download's SHA-256 hash with the value in `SHA256SUMS.txt` attached to the same release. On macOS, open the DMG and copy `TexasSolverGui.app` to Applications. The app uses an ad hoc signature and has no Apple notarization, so Gatekeeper may block it. On Windows, extract the entire ZIP and run `TexasSolverGui.exe` from the extracted folder.
+
+### Build from source
+
+On macOS, install Homebrew and the Xcode Command Line Tools, then run the commands below.
+
+```bash
+brew install qt@5 libomp
+./build-macos.sh
+```
+
+The script produces `build-mac/TexasSolverGui.app` and `build-mac/TexasSolverGui.dmg` for the host architecture. Set `QT_DIR` to the Qt installation directory when using a Qt 5 distribution other than Homebrew.
+
+On Windows, install Qt 5.15.2 for MinGW x64 and its matching MinGW 8.1.0 x64 toolchain. Run the following in PowerShell, adjusting the paths to match your installation.
+
+```powershell
+./build-windows.ps1 -QtDirectory 'C:\Qt\5.15.2\mingw81_64' -MinGWDirectory 'C:\Qt\Tools\mingw810_64'
+```
+
+The script produces `dist/TexasSolverGui-windows-x64.zip`.
+
 ## GUI version Usage
 
 After install the solver, double click the application binary (TexasSolverGui.exe in windows or TexasSolverGui.app in MacOS) to run TexasSolver.

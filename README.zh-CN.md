@@ -28,6 +28,37 @@ Features:
 
 根据你的操作系统型号从  [release package](https://github.com/bupticybee/TexasSolver/releases) 下载相应的包, 解压缩, 安装就完成了。就是这么简单。
 
+### 开发预览版
+
+`dev` 基于本仓库的默认分支 `master`。每次向 `dev` 推送提交，都会触发 [开发构建与发布工作流](https://github.com/chaoluo-git/TexasSolver/actions/workflows/dev-release.yml)。三个构建任务全部成功后，工作流才会发布 [GitHub 预览版](https://github.com/chaoluo-git/TexasSolver/releases)，标签格式为 `dev-<run_number>-<short_sha>`。
+
+| 平台 | 下载文件 |
+| --- | --- |
+| Apple Silicon 芯片的 Mac | `TexasSolverGui-macos-arm64.dmg` |
+| Intel 芯片的 Mac | `TexasSolverGui-macos-x64.dmg` |
+| Windows x64 | `TexasSolverGui-windows-x64.zip` |
+
+可以用同一发布页面附带的 `SHA256SUMS.txt` 校验下载文件。macOS 上，打开 DMG 后将 `TexasSolverGui.app` 拖到「应用程序」文件夹。应用使用临时签名，未经 Apple 公证，Gatekeeper 可能会拦截。Windows 上，完整解压 ZIP 后，在解压目录中打开 `TexasSolverGui.exe`。
+
+### 从源码构建
+
+macOS 上，安装 Homebrew 和 Xcode 命令行工具后运行下面的命令。
+
+```bash
+brew install qt@5 libomp
+./build-macos.sh
+```
+
+脚本按本机架构生成 `build-mac/TexasSolverGui.app` 和 `build-mac/TexasSolverGui.dmg`。如果使用其他方式安装 Qt 5，将 `QT_DIR` 指向该 Qt 安装目录。
+
+Windows 上，安装 Qt 5.15.2 的 MinGW x64 版本和匹配的 MinGW 8.1.0 x64 工具链。按本机安装位置调整路径后，在 PowerShell 中运行下面的命令。
+
+```powershell
+./build-windows.ps1 -QtDirectory 'C:\Qt\5.15.2\mingw81_64' -MinGWDirectory 'C:\Qt\Tools\mingw810_64'
+```
+
+脚本会生成 `dist/TexasSolverGui-windows-x64.zip`。
+
 ## 图形界面版本使用
 
 在安装solver之后，双击应用的图标 (在windows下，双击TexasSolverGui.exe；在mac下，双击 TexasSolverGui.app) 来运行TexasSolver。
